@@ -1,7 +1,8 @@
-// better_debug_print.cc
+// overflow.cc
 
 #include <iostream>
 #include <stdexcept>
+#include <string>
 
 struct Debug {
   template <typename P>
@@ -42,8 +43,24 @@ struct NoDebug {
   void OnPop(P self) {}
 };
 
-template <typename T, typename DebugPolicy = NoDebug>
-class CircularBuffer : private DebugPolicy {
+template <typename P>
+struct OverflowPop {
+  void OnOverflow() { static_cast<P*>(this)->Pop(); }
+};
+
+template <typename P>
+struct OverflowException {
+  void OnOverflow() {
+    std::string msg = "no more space!";
+    throw std::out_of_range(msg);
+  }
+};
+
+template <typename T, template <typename> class OverflowPolicy = OverflowPop,
+          typename DebugPolicy = NoDebug>
+class CircularBuffer
+    : private OverflowPolicy<CircularBuffer<T, OverflowPolicy>>,
+      private DebugPolicy {
  public:
   CircularBuffer(size_t capacity)
       : begin_(0),
@@ -73,20 +90,22 @@ class CircularBuffer : private DebugPolicy {
   void Push(T item) {
     size_t next = Next(end_);
     if (next == begin_) {
-      throw std::out_of_range("buffer overflow!");
+      OverflowPolicy<CircularBuffer>::OnOverflow();
+      next = Next(end_);
     }
     buf_[end_] = std::move(item);
     end_ = next;
     DebugPolicy::OnPush(this);
   }
 
-  void Pop(T& item) {
+  T Pop() {
     if (begin_ == end_) {
       throw std::out_of_range("buffer underflow!");
     }
-    item = std::move(buf_[begin_]);
+    T item = std::move(buf_[begin_]);
     begin_ = Next(begin_);
     DebugPolicy::OnPop(this);
+    return item;
   }
 
  private:
@@ -97,6 +116,7 @@ class CircularBuffer : private DebugPolicy {
   }
 
   friend DebugPolicy;
+  friend OverflowPolicy<CircularBuffer>;
 
   size_t begin_;
   size_t end_;
@@ -105,16 +125,16 @@ class CircularBuffer : private DebugPolicy {
 };
 
 int main() {
-  int n = 10;
-  // auto buf = CircularBuffer<int>(n);
-  auto buf = CircularBuffer<int, Debug>(n);
-  for (int i = 0; i < n; ++i) {
+  int n = 3;
+  // auto buf = CircularBuffer<int, OverflowException>(n);
+  auto buf = CircularBuffer<int>(n);
+  for (int i = 0; i < n + 2; ++i) {
     buf.Push(i);
   }
-  std::cout << std::endl;
   int value;
   for (int i = 0; i < n; ++i) {
-    buf.Pop(value);
+    value = buf.Pop();
+    std::cout << "popped " << value << std::endl;
   }
   return 0;
 }
