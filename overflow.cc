@@ -59,7 +59,7 @@ struct OverflowException {
 template <typename T, template <typename> class OverflowPolicy = OverflowPop,
           typename DebugPolicy = NoDebug>
 class CircularBuffer
-    : private OverflowPolicy<CircularBuffer<T, OverflowPolicy>>,
+    : private OverflowPolicy<CircularBuffer<T, OverflowPolicy, DebugPolicy>>,
       private DebugPolicy {
  public:
   CircularBuffer(size_t capacity)
