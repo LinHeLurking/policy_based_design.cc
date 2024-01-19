@@ -8,3 +8,6 @@ add_executable(naive naive.cc)
 add_executable(debug_print debug_print.cc)
 add_executable(better_debug_print better_debug_print.cc)
 add_executable(overflow overflow.cc)
+add_executable(template_alias template_alias.cc)
+add_executable(export_n_rebind export_n_rebind.cc)
+
